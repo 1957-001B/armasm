@@ -1,3 +1,21 @@
+/* 
+  ArmAsm - A very minimal subset of the ARM-A-Profile ISA instructions.
+
+  The purpose of the project was to learn assembly by doing it my next few things are as follows.
+
+  (A subset of) ArmAsm Instructions -> ArmCore (Verilog) -> ArmCore running on Actix 7 - To learn cpu design and understand limitations of the cpu.
+
+  ArmAsm -> ArmLd -> runnable on apple silicon - To learn ELF and macho and so on and so on.
+
+  I also want to do something comparable for the GPU as it seems like they may be the most important commodity in human history soon enough.
+
+  Note: Not even all the parsed instructions are actually encoded yet or ever.
+
+  By 1957-001B
+
+*/
+
+
 use core::panic;
 use std::{
     collections::HashMap,
@@ -7,7 +25,7 @@ use std::{
 
 #[derive(Debug, PartialEq)]
 enum Instruction {
-    // Minimal
+    // Subset of ARM A Profile Architecture
     MOVK {
         rd: Operand,
         imm: Operand,
@@ -114,27 +132,7 @@ enum Reg {
     X29 = 29,
     X30 = 30,
     XZR = 31,
-}
-fn parse_directive(directive: &str, state: &mut State) -> Option<Vec<u8>> {
-    let parts: Vec<&str> = directive.split_whitespace().collect();
-    match parts[0] {
-        ".data" => {
-            state.current_section = ".data".to_string();
-            None
-        }
-        ".text" => {
-            state.current_section = ".text".to_string();
-            None
-        }
-        ".asciz" => {
-            let s = directive.split('"').nth(1).unwrap_or("");
-            let mut bytes = s.as_bytes().to_vec();
-            bytes.push(0); // Null terminator
-            Some(bytes)
-        }
-
-        _ => None,
-    }
+    // needs implementing properly SP = 31,
 }
 
 fn parse_register(reg: &str) -> Reg {
@@ -171,12 +169,40 @@ fn parse_register(reg: &str) -> Reg {
         "X29" => Reg::X29,
         "X30" => Reg::X30,
         "XZR" => Reg::XZR,
+        "PC" => panic!("PC is not a valid register"),
 
         _ => panic!("Not a valid register"),
     }
 }
 
+fn parse_directive(directive: &str, state: &mut State) -> Option<Vec<u8>> {
+/*
+Currently non-functional at this time I am writing a minimal cpu which will not recognise these anyways .
+*/ 
+
+let parts: Vec<&str> = directive.split_whitespace().collect();
+    match parts[0] {
+        ".data" => {
+            state.current_section = ".data".to_string();
+            None
+        }
+        ".text" => {
+            state.current_section = ".text".to_string();
+            None
+        }
+        ".asciz" => {
+            let s = directive.split('"').nth(1).unwrap_or("");
+            let mut bytes = s.as_bytes().to_vec();
+            bytes.push(0); // Null terminator
+            Some(bytes)
+        }
+
+        _ => None,
+    }
+}
+
 fn parse_line(line: &str, state: &mut State) -> Option<Instruction> {
+
     // Determine if a label
     if line.ends_with(':') {
         state.labels.insert(
@@ -185,6 +211,7 @@ fn parse_line(line: &str, state: &mut State) -> Option<Instruction> {
         );
         return None;
     }
+
     // Determine if directive
     if line.starts_with('.') {
         if let Some(bytes) = parse_directive(line, state) {
@@ -193,20 +220,23 @@ fn parse_line(line: &str, state: &mut State) -> Option<Instruction> {
         return None;
     }
 
+    // Split and clean the line
     let mut parts: Vec<String> = line
         .split(|c: char| c == ',' || c.is_whitespace())
         .filter(|s| !s.is_empty())
         .map(|s| s.to_string())
         .collect();
 
+    // Uppercase the opcode
     if let Some(first) = parts.first_mut() {
         *first = first.to_uppercase().to_string();
     }
-
+    
+    // Vec<String --> &Str>
     let parts: Vec<&str> = parts.iter().map(|s| s.as_str()).collect();
-    //println!("{:#?}", parts);
+    // Match the instruction and add it to the tree
     let inst = match parts.as_slice() {
-        // without shift
+        // Unshifted
         ["MOVK", rd, imm] => Some(Instruction::MOVK {
             rd: Operand::Reg(parse_register(rd.trim_end_matches(','))),
             imm: Operand::Imm(ImmType::Unsigned16(
@@ -215,7 +245,8 @@ fn parse_line(line: &str, state: &mut State) -> Option<Instruction> {
             )),
             shift: Operand::Imm(ImmType::Unsigned16(0)),
         }),
-        //shifted
+
+        //Shifted (not fully implemented)
         ["MOVK", rd, imm, "LSL", shift] => Some(Instruction::MOVK {
             rd: Operand::Reg(parse_register(rd.trim_end_matches(','))),
             imm: Operand::Imm(ImmType::Unsigned16(
@@ -227,7 +258,7 @@ fn parse_line(line: &str, state: &mut State) -> Option<Instruction> {
                 Operand::Imm(ImmType::Unsigned16(shift_value.parse::<u16>().unwrap()))
             },
         }),
-
+        // Unshifted
         ["MOVZ", rd, imm] => Some(Instruction::MOVZ {
             rd: Operand::Reg(parse_register(rd.trim_end_matches(','))),
             imm: Operand::Imm(ImmType::Unsigned16(
@@ -237,7 +268,7 @@ fn parse_line(line: &str, state: &mut State) -> Option<Instruction> {
             shift: Operand::Imm(ImmType::Unsigned16(0)),
         }),
 
-        //shifted
+        //Shifted
         ["MOVZ", rd, imm, "LSL", shift] => Some(Instruction::MOVZ {
             rd: Operand::Reg(parse_register(rd.trim_end_matches(','))),
             imm: Operand::Imm(ImmType::Unsigned16(
@@ -249,24 +280,19 @@ fn parse_line(line: &str, state: &mut State) -> Option<Instruction> {
                 Operand::Imm(ImmType::Unsigned16(shift_value.parse::<u16>().unwrap()))
             },
         }),
-
-        // https://developer.arm.com/documentation/ddi0602/2024-12/Base-Instructions/ORR--immediate---Bitwise-OR--immediate--?lang=en
+        // This is the instruction that MOV X0, X1 actually aliases to as we can use X31/XZR to do ORR X0, XZR, X1 shouldn't accept non-register operands
         ["ORR", dest, src1, src2] => Some(Instruction::ORR {
             dest: Operand::Reg(parse_register(dest.trim_end_matches(','))),
             src1: if src1.starts_with('X') {
                 Operand::Reg(parse_register(src1.trim_end_matches(',')))
             } else {
-                Operand::Imm(ImmType::Unsigned(
-                    src1.trim_end_matches(',').parse().unwrap(),
-                ))
+              panic!("ORR only supports register movements in this assembler");
             },
 
             src2: if src2.starts_with('X') {
                 Operand::Reg(parse_register(src2.trim_end_matches(',')))
             } else {
-                Operand::Imm(ImmType::Unsigned(
-                    src2.trim_end_matches(',').parse().unwrap(),
-                ))
+              panic!("ORR only supports register movements in this assembler");
             },
         }),
 
@@ -289,6 +315,7 @@ fn parse_line(line: &str, state: &mut State) -> Option<Instruction> {
                 ))
             },
         }),
+
         // https://developer.arm.com/documentation/ddi0602/2024-12/Base-Instructions/LDR--immediate---Load-register--immediate--?lang=en#XnSP_option
         ["LDR", rt, label] => Some(Instruction::LDR {
             rt: Operand::Reg(parse_register(rt.trim_end_matches(','))),
@@ -309,6 +336,7 @@ fn parse_line(line: &str, state: &mut State) -> Option<Instruction> {
                 panic!("Literal Addr Only")
             },
         }),
+
         // https://developer.arm.com/documentation/ddi0602/2024-12/Base-Instructions/STR--immediate---Store-register--immediate--?lang=en
         ["STUR", dest, addr] => Some(Instruction::STUR {
             src: Operand::Reg(parse_register(dest.trim_end_matches(','))),
@@ -333,6 +361,7 @@ fn parse_line(line: &str, state: &mut State) -> Option<Instruction> {
                 panic!("Invalid Address")
             },
         }),
+
         // https://developer.arm.com/documentation/ddi0602/2024-12/Base-Instructions/SVC--Supervisor-call-?lang=en
         ["SVC", syscall] => Some(Instruction::SVC {
             syscall: if syscall.starts_with('#') {
@@ -356,6 +385,7 @@ fn parse_line(line: &str, state: &mut State) -> Option<Instruction> {
     }
     inst
 }
+
 fn encode_movk(rd: &Operand, imm: &Operand, shift: &Operand) -> u32 {
     // Extract register number
     let rd_val = match rd {
@@ -450,8 +480,9 @@ fn encode_ldr(rt: &Operand) -> u32 {
     // Zero out the imm19 field - it will be filled in during the second pass
 
     let opc = 1;
-
-    let encoded = (0b00011000 << 24) |  // Fixed bits for LDR literal
+    let sf  = 1;
+    let encoded = (sf << 31) |
+                (0b00011000 << 24) |  // Fixed bits for LDR literal
                 (opc << 30) |          // opc field (01 for 64-bit variant)
                 (0 << 5) |             // imm19 field (zeroed out)
                 (rt); // Rt field
@@ -519,7 +550,8 @@ fn assemble(path: String) -> io::Result<()> {
         .filter(|l| !l.starts_with("//") && !l.trim().is_empty())
         .collect();
 
-    //dbg!(&contents);
+    let mut debug_contents = contents.clone();
+    debug_contents.drain(0..3);
 
     let mut state = State::new();
 
@@ -534,7 +566,7 @@ fn assemble(path: String) -> io::Result<()> {
     let mut encoded: Vec<u32> = Vec::new();
 
     //second pass
-    for (_l, instruction) in parsed.iter().enumerate() {
+    for (l, instruction) in parsed.iter().enumerate() {
         let mut encoded_line: u32 = encode_line(instruction, &mut state);
 
         match instruction {
@@ -545,11 +577,14 @@ fn assemble(path: String) -> io::Result<()> {
             }
             _ => {}
         }
-        // println!("{:?} {:032b}", &instruction, &encoded_line);
+        println!(
+            "{:?} : {:0b} - {:0x}",
+            debug_contents[l], &encoded_line, &encoded_line
+        );
 
         encoded.push(encoded_line);
     }
-    println!("Final State: {:#?}", &state);
+
     let file = File::create("output.bin").expect("Failed to create file");
 
     let mut writer = BufWriter::new(file);
@@ -566,13 +601,13 @@ fn assemble(path: String) -> io::Result<()> {
         writer.write_all(&[0])?;
     }
 
-    // 3. Append the data section (literal pool)
     writer.write_all(&state.data)?;
 
     return Ok(());
 }
 fn main() {
-    let _ = assemble("goal.s".to_string());
+    let _ = assemble("./example/goal.s".to_string());
+    // println!("{:#?}",a)
 }
 
 // tests
@@ -603,3 +638,8 @@ mod tests {
         Ok(())
     }
 }
+/* 
+Congratulations you reached the end of this mess some variable names are wrong because it was written so fast that I just copy pasted my own boilerplate and sometimes didn't even change the variable names or comments.
+I wrote this from 7pm to 3:30am in one night ~9 hours and about 6 hours the following week here and there I learnt alot
+*/
+
