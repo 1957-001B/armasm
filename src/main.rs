@@ -237,14 +237,15 @@ fn parse_line(line: &str, state: &mut State) -> Option<Instruction> {
     // Match the instruction and add it to the tree
     let inst = match parts.as_slice() {
         // Unshifted
-        ["MOVK", rd, imm] => Some(Instruction::MOVK {
+        ["MOVK", rd, imm] => dbg!(Some(Instruction::MOVK {
             rd: Operand::Reg(parse_register(rd.trim_end_matches(','))),
             imm: Operand::Imm(ImmType::Unsigned16(
                 u16::from_str_radix(imm.strip_prefix("#0x").unwrap().trim_end_matches(','), 16)
                     .unwrap(),
             )),
             shift: Operand::Imm(ImmType::Unsigned16(0)),
-        }),
+        }
+    )),
 
         //Shifted (not fully implemented)
         ["MOVK", rd, imm, "LSL", shift] => Some(Instruction::MOVK {
@@ -258,6 +259,7 @@ fn parse_line(line: &str, state: &mut State) -> Option<Instruction> {
                 Operand::Imm(ImmType::Unsigned16(shift_value.parse::<u16>().unwrap()))
             },
         }),
+        
         // Unshifted
         ["MOVZ", rd, imm] => Some(Instruction::MOVZ {
             rd: Operand::Reg(parse_register(rd.trim_end_matches(','))),
@@ -280,7 +282,7 @@ fn parse_line(line: &str, state: &mut State) -> Option<Instruction> {
                 Operand::Imm(ImmType::Unsigned16(shift_value.parse::<u16>().unwrap()))
             },
         }),
-        // This is the instruction that MOV X0, X1 actually aliases to as we can use X31/XZR to do ORR X0, XZR, X1 shouldn't accept non-register operands
+        // This is the instruction that MOVZ X0, X1 actually aliases to as we can use X31/XZR to do ORR X0, XZR, X1 shouldn't accept non-register operands
         ["ORR", dest, src1, src2] => Some(Instruction::ORR {
             dest: Operand::Reg(parse_register(dest.trim_end_matches(','))),
             src1: if src1.starts_with('X') {
@@ -380,7 +382,6 @@ fn parse_line(line: &str, state: &mut State) -> Option<Instruction> {
         _ => None,
     };
     if !line.trim_start().starts_with('.') {
-        // println!("{:#?}", state);
         state.current_addr += 4;
     }
     inst
@@ -420,13 +421,15 @@ fn encode_movk(rd: &Operand, imm: &Operand, shift: &Operand) -> u32 {
     // Construct the instruction using the encoding format:
     // sf(1) opc(7) hw(2) imm16(16) Rd(5) op(1)
     let encoded = (sf << 31) |            // sf bit
-                 (0b11100101 << 23) |     // opc field
+                 (0b11100101<< 23) |     // opc field
                  (hw << 21) |             // hw field
                  (imm_val << 5) |         // imm16 field
                  rd_val; // Rd field
-
+    println!("{:0b}", encoded);
     encoded
 }
+
+
 fn encode_movz(rd: &Operand, imm: &Operand, shift: &Operand) -> u32 {
     // Extract register number
     let rd_val = match rd {
@@ -493,7 +496,7 @@ fn encode_svc(syscall: &Operand) -> u32 {
     // Extract register number Rt
     let syscall: u16 = match syscall {
         Operand::Imm(ImmType::Unsigned16(syscall)) => *syscall as u16,
-        _ => panic!("Oh crap"),
+        _ => panic!("promlem"),
     };
 
     // For LDR literal (PC-relative)
@@ -530,7 +533,7 @@ fn resolve_address(encoding: u32, state: &State) -> u32 {
 
 fn encode_line(op: &Instruction, _state: &mut State) -> u32 {
     match op {
-        Instruction::MOVK { rd, imm, shift } => encode_movk(&rd, &imm, &shift),
+        Instruction::MOVK { rd, imm, shift } => encode_movk(&rd, &imm, shift),
         Instruction::MOVZ { rd, imm, shift } => encode_movz(&rd, &imm, &shift),
         Instruction::LDR { rt, label: _ } => encode_ldr(&rt),
         Instruction::SVC { syscall } => encode_svc(syscall),
@@ -550,9 +553,6 @@ fn assemble(path: String) -> io::Result<()> {
         .filter(|l| !l.starts_with("//") && !l.trim().is_empty())
         .collect();
 
-    let mut debug_contents = contents.clone();
-    debug_contents.drain(0..3);
-
     let mut state = State::new();
 
     let mut parsed = Vec::new();
@@ -566,7 +566,7 @@ fn assemble(path: String) -> io::Result<()> {
     let mut encoded: Vec<u32> = Vec::new();
 
     //second pass
-    for (l, instruction) in parsed.iter().enumerate() {
+    for (_l, instruction) in parsed.iter().enumerate() {
         let mut encoded_line: u32 = encode_line(instruction, &mut state);
 
         match instruction {
@@ -577,10 +577,10 @@ fn assemble(path: String) -> io::Result<()> {
             }
             _ => {}
         }
-        println!(
-            "{:?} : {:0b} - {:0x}",
-            debug_contents[l], &encoded_line, &encoded_line
-        );
+        // println!(
+        //     "{:?} : {:0b} - {:0x}",
+        //     debug_contents[l], &encoded_line, &encoded_line
+        // );
 
         encoded.push(encoded_line);
     }
@@ -606,7 +606,7 @@ fn assemble(path: String) -> io::Result<()> {
     return Ok(());
 }
 fn main() {
-    let _ = assemble("./example/goal.s".to_string());
+    let _ = assemble("./as.s".to_string());
     // println!("{:#?}",a)
 }
 
