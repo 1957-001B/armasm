@@ -421,11 +421,11 @@ fn encode_movk(rd: &Operand, imm: &Operand, shift: &Operand) -> u32 {
     // Construct the instruction using the encoding format:
     // sf(1) opc(7) hw(2) imm16(16) Rd(5) op(1)
     let encoded = (sf << 31) |            // sf bit
-                 (0b11100101<< 23) |     // opc field
+                 (0b111100101<< 23) |     // opc field
                  (hw << 21) |             // hw field
                  (imm_val << 5) |         // imm16 field
                  rd_val; // Rd field
-    println!("{:0b}", encoded);
+    println!("Movk encoding: {:0b}", encoded);
     encoded
 }
 
@@ -469,6 +469,7 @@ fn encode_movz(rd: &Operand, imm: &Operand, shift: &Operand) -> u32 {
                  (imm_val << 5) |         // imm16 field
                  rd_val; // Rd field
 
+    println!("Movz encoding: {:0b}", encoded);
     encoded
 }
 fn encode_ldr(rt: &Operand) -> u32 {
