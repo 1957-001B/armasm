@@ -1,4 +1,4 @@
-/* 
+/*
   ArmAsm - A very minimal subset of the ARM-A-Profile ISA instructions.
 
   The purpose of the project was to learn assembly by doing it my next few things are as follows.
@@ -15,8 +15,6 @@
 
 */
 
-
-use core::panic;
 use std::{
     collections::HashMap,
     fs::File,
@@ -24,6 +22,7 @@ use std::{
 };
 
 #[derive(Debug, PartialEq)]
+#[allow(clippy::upper_case_acronyms)]
 enum Instruction {
     // Subset of ARM A Profile Architecture
     MOVK {
@@ -98,6 +97,7 @@ impl State {
 
 #[derive(Debug, PartialEq, Copy, Clone)]
 #[repr(u32)]
+#[allow(clippy::upper_case_acronyms)]
 enum Reg {
     // keeping only 64 bit registers for simplicity easy to implement 32 bit
     X0 = 0,
@@ -176,11 +176,8 @@ fn parse_register(reg: &str) -> Reg {
 }
 
 fn parse_directive(directive: &str, state: &mut State) -> Option<Vec<u8>> {
-/*
-Currently non-functional at this time I am writing a minimal cpu which will not recognise these anyways .
-*/ 
-
-let parts: Vec<&str> = directive.split_whitespace().collect();
+    // Currently non-functional at this time I am writing a minimal cpu which will not recognise these anyways.
+    let parts: Vec<&str> = directive.split_whitespace().collect();
     match parts[0] {
         ".data" => {
             state.current_section = ".data".to_string();
@@ -202,7 +199,6 @@ let parts: Vec<&str> = directive.split_whitespace().collect();
 }
 
 fn parse_line(line: &str, state: &mut State) -> Option<Instruction> {
-
     // Determine if a label
     if line.ends_with(':') {
         state.labels.insert(
@@ -231,21 +227,20 @@ fn parse_line(line: &str, state: &mut State) -> Option<Instruction> {
     if let Some(first) = parts.first_mut() {
         *first = first.to_uppercase().to_string();
     }
-    
+
     // Vec<String --> &Str>
     let parts: Vec<&str> = parts.iter().map(|s| s.as_str()).collect();
     // Match the instruction and add it to the tree
     let inst = match parts.as_slice() {
         // Unshifted
-        ["MOVK", rd, imm] => dbg!(Some(Instruction::MOVK {
+        ["MOVK", rd, imm] => Some(Instruction::MOVK {
             rd: Operand::Reg(parse_register(rd.trim_end_matches(','))),
             imm: Operand::Imm(ImmType::Unsigned16(
                 u16::from_str_radix(imm.strip_prefix("#0x").unwrap().trim_end_matches(','), 16)
                     .unwrap(),
             )),
             shift: Operand::Imm(ImmType::Unsigned16(0)),
-        }
-    )),
+        }),
 
         //Shifted (not fully implemented)
         ["MOVK", rd, imm, "LSL", shift] => Some(Instruction::MOVK {
@@ -259,7 +254,7 @@ fn parse_line(line: &str, state: &mut State) -> Option<Instruction> {
                 Operand::Imm(ImmType::Unsigned16(shift_value.parse::<u16>().unwrap()))
             },
         }),
-        
+
         // Unshifted
         ["MOVZ", rd, imm] => Some(Instruction::MOVZ {
             rd: Operand::Reg(parse_register(rd.trim_end_matches(','))),
@@ -288,13 +283,13 @@ fn parse_line(line: &str, state: &mut State) -> Option<Instruction> {
             src1: if src1.starts_with('X') {
                 Operand::Reg(parse_register(src1.trim_end_matches(',')))
             } else {
-              panic!("ORR only supports register movements in this assembler");
+                panic!("ORR only supports register movements in this assembler");
             },
 
             src2: if src2.starts_with('X') {
                 Operand::Reg(parse_register(src2.trim_end_matches(',')))
             } else {
-              panic!("ORR only supports register movements in this assembler");
+                panic!("ORR only supports register movements in this assembler");
             },
         }),
 
@@ -420,15 +415,8 @@ fn encode_movk(rd: &Operand, imm: &Operand, shift: &Operand) -> u32 {
 
     // Construct the instruction using the encoding format:
     // sf(1) opc(7) hw(2) imm16(16) Rd(5) op(1)
-    let encoded = (sf << 31) |            // sf bit
-                 (0b111100101<< 23) |     // opc field
-                 (hw << 21) |             // hw field
-                 (imm_val << 5) |         // imm16 field
-                 rd_val; // Rd field
-    println!("Movk encoding: {:0b}", encoded);
-    encoded
+    (sf << 31) | (0b111100101 << 23) | (hw << 21) | (imm_val << 5) | rd_val
 }
-
 
 fn encode_movz(rd: &Operand, imm: &Operand, shift: &Operand) -> u32 {
     // Extract register number
@@ -463,15 +451,9 @@ fn encode_movz(rd: &Operand, imm: &Operand, shift: &Operand) -> u32 {
 
     // Construct the instruction using the encoding format:
     // sf(1) opc(7) hw(2) imm16(16) Rd(5) op(1)
-    let encoded = (sf << 31) |            // sf bit
-                 (0b010100101<< 23) |     // opc field
-                 (hw << 21) |             // hw field
-                 (imm_val << 5) |         // imm16 field
-                 rd_val; // Rd field
-
-    println!("Movz encoding: {:0b}", encoded);
-    encoded
+    (sf << 31) | (0b010100101 << 23) | (hw << 21) | (imm_val << 5) | rd_val
 }
+
 fn encode_ldr(rt: &Operand) -> u32 {
     // Extract register number Rt
     let rt = match rt {
@@ -484,29 +466,17 @@ fn encode_ldr(rt: &Operand) -> u32 {
     // Zero out the imm19 field - it will be filled in during the second pass
 
     let opc = 1;
-    let sf  = 1;
-    let encoded = (sf << 31) |
-                (0b00011000 << 24) |  // Fixed bits for LDR literal
-                (opc << 30) |          // opc field (01 for 64-bit variant)
-                (0 << 5) |             // imm19 field (zeroed out)
-                (rt); // Rt field
-
-    encoded
+    let sf = 1;
+    (sf << 31) | (0b00011000 << 24) | (opc << 30) | rt
 }
+
 fn encode_svc(syscall: &Operand) -> u32 {
-    // Extract register number Rt
-    let syscall: u16 = match syscall {
-        Operand::Imm(ImmType::Unsigned16(syscall)) => *syscall as u16,
-        _ => panic!("promlem"),
+    let syscall = match syscall {
+        Operand::Imm(ImmType::Unsigned16(syscall)) => *syscall,
+        _ => panic!("Expected Unsigned16 for syscall"),
     };
 
-    // For LDR literal (PC-relative)
-    // Opcode is 0x58 (01011000) for 64-bit variant
-    // Zero out the imm19 field - it will be filled in during the second pass
-
-    let encoded: u32 = (0b11010100000 << 21) | ((syscall as u32) << 5) | 0b1;
-
-    encoded
+    (0b11010100000 << 21) | ((syscall as u32) << 5) | 0b1
 }
 
 fn resolve_address(encoding: u32, state: &State) -> u32 {
@@ -518,9 +488,9 @@ fn resolve_address(encoding: u32, state: &State) -> u32 {
             let offset = (targ_addr as i64) - (pc as i64);
 
             assert!(
-                offset >= -1048576 && offset <= 1048575,
+                (-1048576..=1048575).contains(&offset),
                 "LDR offset out of range"
-            ); //  +/-1MB?
+            ); // +/-1MB
 
             let imm19 = ((offset >> 2) & 0x7FFFF) as u32;
 
@@ -534,11 +504,10 @@ fn resolve_address(encoding: u32, state: &State) -> u32 {
 
 fn encode_line(op: &Instruction, _state: &mut State) -> u32 {
     match op {
-        Instruction::MOVK { rd, imm, shift } => encode_movk(&rd, &imm, shift),
-        Instruction::MOVZ { rd, imm, shift } => encode_movz(&rd, &imm, &shift),
-        Instruction::LDR { rt, label: _ } => encode_ldr(&rt),
+        Instruction::MOVK { rd, imm, shift } => encode_movk(rd, imm, shift),
+        Instruction::MOVZ { rd, imm, shift } => encode_movz(rd, imm, shift),
+        Instruction::LDR { rt, label: _ } => encode_ldr(rt),
         Instruction::SVC { syscall } => encode_svc(syscall),
-
         _ => 0,
     }
 }
@@ -566,17 +535,16 @@ fn assemble(path: String) -> io::Result<()> {
 
     let mut encoded: Vec<u32> = Vec::new();
 
-    //second pass
-    for (_l, instruction) in parsed.iter().enumerate() {
+    // second pass
+    for instruction in &parsed {
         let mut encoded_line: u32 = encode_line(instruction, &mut state);
 
-        match instruction {
-            Instruction::LDR { rt: _, label } => {
-                if let Operand::Imm(ImmType::UnresolvedSymbol(_symbol)) = label {
-                    encoded_line = resolve_address(encoded_line, &state);
-                }
-            }
-            _ => {}
+        if let Instruction::LDR {
+            rt: _,
+            label: Operand::Imm(ImmType::UnresolvedSymbol(_)),
+        } = instruction
+        {
+            encoded_line = resolve_address(encoded_line, &state);
         }
         // println!(
         //     "{:?} : {:0b} - {:0x}",
@@ -604,7 +572,7 @@ fn assemble(path: String) -> io::Result<()> {
 
     writer.write_all(&state.data)?;
 
-    return Ok(());
+    Ok(())
 }
 fn main() {
     let _ = assemble("./as.s".to_string());
@@ -639,8 +607,7 @@ mod tests {
         Ok(())
     }
 }
-/* 
+/*
 Congratulations you reached the end of this mess some variable names are wrong because it was written so fast that I just copy pasted my own boilerplate and sometimes didn't even change the variable names or comments.
 I wrote this from 7pm to 3:30am in one night ~9 hours and about 6 hours the following week here and there I learnt alot
 */
-
