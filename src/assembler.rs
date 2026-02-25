@@ -284,26 +284,26 @@ pub fn parse_line(line: &str, state: &mut State) -> Option<Instruction> {
             src1: if src1.starts_with('X') {
                 Operand::Reg(parse_register(src1.trim_end_matches(',')))
             } else {
-                Operand::Imm(ImmType::Unsigned(
-                    src1.trim_end_matches(',').parse().unwrap(),
-                ))
+                let val = src1.trim_start_matches('#').trim_end_matches(',');
+                Operand::Imm(ImmType::Unsigned(val.parse().unwrap()))
             },
 
             src2: if src2.starts_with('X') {
                 Operand::Reg(parse_register(src2.trim_end_matches(',')))
             } else {
-                Operand::Imm(ImmType::Unsigned(
-                    src2.trim_end_matches(',').parse().unwrap(),
-                ))
+                let val = src2.trim_start_matches('#').trim_end_matches(',');
+                Operand::Imm(ImmType::Unsigned(val.parse().unwrap()))
             },
         }),
 
         ["LDR", rt, label] => Some(Instruction::LDR {
             rt: Operand::Reg(parse_register(rt.trim_end_matches(','))),
             label: if label.starts_with('=') {
-                if label.starts_with("0x") {
+                let label_inner = label.strip_prefix('=').unwrap();
+                if label_inner.starts_with("0x") {
                     Operand::Imm(ImmType::Address(
-                        u64::from_str_radix(label.strip_prefix("0x").unwrap(), 16).unwrap_or(0),
+                        u64::from_str_radix(label_inner.strip_prefix("0x").unwrap(), 16)
+                            .unwrap_or(0),
                     ))
                 } else {
                     let symbol_name = label.strip_prefix('=').unwrap().to_string();
@@ -421,15 +421,16 @@ fn encode_movz(rd: &Operand, imm: &Operand, shift: &Operand) -> u32 {
     (sf << 31) | (0b010100101 << 23) | (hw << 21) | (imm_val << 5) | rd_val
 }
 
-fn encode_ldr(rt: &Operand) -> u32 {
+fn encode_ldur(rt: &Operand) -> u32 {
     let rt = match rt {
         Operand::Reg(reg) => *reg as u32,
         _ => panic!("Expected register for rd"),
     };
 
-    let opc = 1;
-    let sf = 1;
-    (sf << 31) | (0b00011000 << 24) | (opc << 30) | rt
+    // LDUR literal 64-bit: 0xD8 << 24 | rt (signed load)
+        let opc = 1;
+        let sf = 1;
+        (sf << 31) | (0b00011000 << 24) | (opc << 30) | rt
 }
 
 fn encode_svc(syscall: &Operand) -> u32 {
@@ -467,7 +468,7 @@ fn encode_line(op: &Instruction, _state: &mut State) -> u32 {
     let encoded = match op {
         Instruction::MOVK { rd, imm, shift } => encode_movk(rd, imm, shift),
         Instruction::MOVZ { rd, imm, shift } => encode_movz(rd, imm, shift),
-        Instruction::LDR { rt, label: _ } => encode_ldr(rt),
+        Instruction::LDR { rt, label: _ } => encode_ldur(rt),
         Instruction::SVC { syscall } => encode_svc(syscall),
         _ => 0,
     };
