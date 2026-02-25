@@ -1,18 +1,18 @@
 # ArmAsm
 
-Minimal Arm Assembler written in Rust.
+Minimal ARM Assembler written in Rust.
 
-features:
-- MOVZ
-- MOVK 
-- LDR 
-- SVC 
-- implemented PC relative addressing 
-- symbol resoloution 
+Features:
+- movz
+- movk 
+- ldr 
+- svc 
+- PC-relative addressing 
+- symbol resolution 
 - literal pooling
-- example asssembly file that works
+- example assembly file that works
 
-can easily add more insturctions currently it parses more instructions than it encodes in case I want to go implement them later
+You can easily add more instructions. Currently it parses more instructions than it encodes, in case I want to implement them later.
 
 
 ## Example: 
@@ -55,3 +55,20 @@ to
 ```
 
 ![verify](./decomp.png)
+
+
+## TODO
+
+### Finish project
+- What we need:
+  - movz (x)
+  - movk (x)
+  - ldr  ( )
+  - svc  ( )
+  - PC-relative addressing (x)
+  - symbol resolution (x)
+  - literal pooling (x)
+  - example assembly file that works (x)
+  - Good tests
+  - Taste :0
+
