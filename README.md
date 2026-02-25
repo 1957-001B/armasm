@@ -61,14 +61,14 @@ to
 
 ### Finish project
 - What we need:
-  - movz [x]
-  - movk [x]
-  - ldr  [ ]
-  - svc  [ ]
-  - PC-relative addressing [x]
-  - symbol resolution [x]
-  - literal pooling [ ]
-  - example assembly file that works [ ]
-  - Good tests [ ]
-  - Taste :0 [ ]
+  - [x] movz
+  - [x] movk
+  - [ ] ldr
+  - [ ] svc
+  - [x] PC-relative addressing
+  - [x] symbol resolution
+  - [ ] literal pooling
+  - [ ] example assembly file that works
+  - [ ] Good tests
+  - [ ] Taste :0
 
