@@ -196,6 +196,10 @@ fn parse_directive(directive: &str, state: &mut State) -> Option<Vec<u8>> {
 }
 
 pub fn parse_line(line: &str, state: &mut State) -> Option<Instruction> {
+    if get_debug_level() >= 2 {
+        eprintln!("{}", line);
+    }
+
     if line.ends_with(':') {
         state.labels.insert(
             line.strip_suffix(':').unwrap().to_string(),
@@ -428,9 +432,9 @@ fn encode_ldur(rt: &Operand) -> u32 {
     };
 
     // LDUR literal 64-bit: 0xD8 << 24 | rt (signed load)
-        let opc = 1;
-        let sf = 1;
-        (sf << 31) | (0b00011000 << 24) | (opc << 30) | rt
+    let opc = 1;
+    let sf = 1;
+    (sf << 31) | (0b00011000 << 24) | (opc << 30) | rt
 }
 
 fn encode_svc(syscall: &Operand) -> u32 {
@@ -472,8 +476,9 @@ fn encode_line(op: &Instruction, _state: &mut State) -> u32 {
         Instruction::SVC { syscall } => encode_svc(syscall),
         _ => 0,
     };
+
     if get_debug_level() >= 2 {
-        eprintln!("Encoded instruction: {:08x}", encoded);
+        eprintln!("{:?} {:08x}", op, encoded);
     }
     encoded
 }
@@ -498,7 +503,9 @@ pub fn assemble(path: String) -> io::Result<()> {
             parsed.push(instruction);
         }
     }
-
+    if get_debug_level() >= 2 {
+        eprintln!("\n\n");
+    }
     let mut encoded: Vec<u32> = Vec::new();
 
     for instruction in &parsed {
