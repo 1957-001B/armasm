@@ -3,6 +3,7 @@ use std::{
     fs::File,
     io::{self, BufWriter, Read, Write},
     sync::atomic::{AtomicU8, Ordering},
+    time::Instant,
 };
 
 static DEBUG_LEVEL: AtomicU8 = AtomicU8::new(0);
@@ -484,6 +485,8 @@ fn encode_line(op: &Instruction, _state: &mut State) -> u32 {
 }
 
 pub fn assemble(path: String) -> io::Result<()> {
+    let start = Instant::now();
+
     let mut file = File::open(path)?;
     let mut contents = String::new();
 
@@ -539,6 +542,8 @@ pub fn assemble(path: String) -> io::Result<()> {
     }
 
     writer.write_all(&state.data)?;
+
+    eprintln!("Assembled in {:?}", start.elapsed());
 
     Ok(())
 }
