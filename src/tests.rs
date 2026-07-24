@@ -33,7 +33,7 @@ mod tests {
         let inst = result.unwrap();
         match inst {
             Instruction::MOVK { rd, imm, shift } => {
-                assert!(matches!(rd, Operand::Reg(Reg::X8)));
+                assert!(matches!(rd, Operand::Reg(8)));
                 assert!(matches!(imm, Operand::Imm(ImmType::Unsigned16(0x1234))));
                 assert!(matches!(shift, Operand::Imm(ImmType::Unsigned16(0))));
             }
@@ -49,7 +49,7 @@ mod tests {
         let inst = result.unwrap();
         match inst {
             Instruction::MOVK { rd, imm, shift } => {
-                assert!(matches!(rd, Operand::Reg(Reg::X8)));
+                assert!(matches!(rd, Operand::Reg(8)));
                 assert!(matches!(imm, Operand::Imm(ImmType::Unsigned16(0x1234))));
                 assert!(matches!(shift, Operand::Imm(ImmType::Unsigned16(16))));
             }
@@ -65,7 +65,7 @@ mod tests {
         let inst = result.unwrap();
         match inst {
             Instruction::MOVZ { rd, imm, shift } => {
-                assert!(matches!(rd, Operand::Reg(Reg::X0)));
+                assert!(matches!(rd, Operand::Reg(0)));
                 assert!(matches!(imm, Operand::Imm(ImmType::Unsigned16(0xABCD))));
                 assert!(matches!(shift, Operand::Imm(ImmType::Unsigned16(0))));
             }
@@ -81,7 +81,7 @@ mod tests {
         let inst = result.unwrap();
         match inst {
             Instruction::MOVZ { rd, imm, shift } => {
-                assert!(matches!(rd, Operand::Reg(Reg::X1)));
+                assert!(matches!(rd, Operand::Reg(1)));
                 assert!(matches!(imm, Operand::Imm(ImmType::Unsigned16(0xFF))));
                 assert!(matches!(shift, Operand::Imm(ImmType::Unsigned16(32))));
             }
@@ -97,9 +97,9 @@ mod tests {
         let inst = result.unwrap();
         match inst {
             Instruction::ORR { dest, src1, src2 } => {
-                assert!(matches!(dest, Operand::Reg(Reg::X0)));
-                assert!(matches!(src1, Operand::Reg(Reg::X1)));
-                assert!(matches!(src2, Operand::Reg(Reg::X2)));
+                assert!(matches!(dest, Operand::Reg(0)));
+                assert!(matches!(src1, Operand::Reg(1)));
+                assert!(matches!(src2, Operand::Reg(2)));
             }
             _ => panic!("Expected ORR"),
         }
@@ -113,9 +113,9 @@ mod tests {
         let inst = result.unwrap();
         match inst {
             Instruction::ADD { dest, src1, src2 } => {
-                assert!(matches!(dest, Operand::Reg(Reg::X0)));
-                assert!(matches!(src1, Operand::Reg(Reg::X1)));
-                assert!(matches!(src2, Operand::Reg(Reg::X2)));
+                assert!(matches!(dest, Operand::Reg(0)));
+                assert!(matches!(src1, Operand::Reg(1)));
+                assert!(matches!(src2, Operand::Reg(2)));
             }
             _ => panic!("Expected ADD"),
         }
@@ -129,8 +129,8 @@ mod tests {
         let inst = result.unwrap();
         match inst {
             Instruction::ADD { dest, src1, src2 } => {
-                assert!(matches!(dest, Operand::Reg(Reg::X0)));
-                assert!(matches!(src1, Operand::Reg(Reg::X1)));
+                assert!(matches!(dest, Operand::Reg(0)));
+                assert!(matches!(src1, Operand::Reg(1)));
                 assert!(matches!(src2, Operand::Imm(ImmType::Unsigned(42))));
             }
             _ => panic!("Expected ADD with immediate"),
@@ -145,7 +145,7 @@ mod tests {
         let inst = result.unwrap();
         match inst {
             Instruction::LDR { rt, label } => {
-                assert!(matches!(rt, Operand::Reg(Reg::X1)));
+                assert!(matches!(rt, Operand::Reg(1)));
                 assert!(
                     matches!(label, Operand::Imm(ImmType::UnresolvedSymbol(s)) if s == "message")
                 );
@@ -162,7 +162,7 @@ mod tests {
         let inst = result.unwrap();
         match inst {
             Instruction::LDR { rt, label } => {
-                assert!(matches!(rt, Operand::Reg(Reg::X0)));
+                assert!(matches!(rt, Operand::Reg(0)));
                 assert!(matches!(label, Operand::Imm(ImmType::Address(0x1000))));
             }
             _ => panic!("Expected LDR with hex address"),
@@ -177,7 +177,7 @@ mod tests {
         let inst = result.unwrap();
         match inst {
             Instruction::STUR { src, addr } => {
-                assert!(matches!(src, Operand::Reg(Reg::X0)));
+                assert!(matches!(src, Operand::Reg(0)));
                 assert!(matches!(addr, Operand::Imm(ImmType::Address(0x1000))));
             }
             _ => panic!("Expected STUR"),
