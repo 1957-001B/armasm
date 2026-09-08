@@ -63,12 +63,10 @@ to
 - What we need:
   - [x] movz
   - [x] movk
-  - [ ] ldr
-  - [ ] svc
+  - [X] ldr
+  - [X] svc
   - [x] PC-relative addressing
   - [x] symbol resolution
   - [ ] literal pooling
   - [ ] example assembly file that works
-  - [ ] Good tests
-  - [ ] Taste :0
 
