@@ -29,34 +29,34 @@ macro_rules! dbg_level {
 #[allow(clippy::upper_case_acronyms)]
 pub enum Instruction {
     MOVK {
-        rd: Operand,
+        rd: Reg,
         imm: Operand,
         shift: Operand,
     },
     MOVZ {
-        rd: Operand,
+        rd: Reg,
         imm: Operand,
         shift: Operand,
     },
     ORR {
-        dest: Operand,
-        src1: Operand,
-        src2: Operand,
+        dest: Reg,
+        src1: Reg,
+        src2: Reg,
     },
     ADD {
-        dest: Operand,
-        src1: Operand,
+        dest: Reg,
+        src1: Reg,
         src2: Operand,
     },
     B {
         addr: Operand,
     },
     LDR {
-        rt: Operand,
+        rt: Reg,
         label: Operand,
     },
     STUR {
-        src: Operand,
+        src: Reg,
         addr: Operand,
     },
     SVC {
@@ -87,6 +87,7 @@ pub struct State {
     pub current_section: String,
     pub data: Vec<u8>,
 }
+
 impl State {
     pub fn new() -> Self {
         State {
@@ -99,6 +100,7 @@ impl State {
     }
 }
 
+<<<<<<< Updated upstream
 /// Parse an X-register name into its 5-bit encoding (0–31).
 /// Accepts `X0`–`X30`, `X31`/`XZR`. `PC` is rejected.
 pub fn parse_register(reg: &str) -> u32 {
@@ -136,6 +138,30 @@ fn parse_mov_wide(rd: &str, imm: &str, shift: Option<&str>) -> (Operand, Operand
     };
     (rd, imm, shift)
 }
+=======
+ #[derive(Debug, PartialEq, Eq, Copy, Clone)]                                                    
+   pub struct Reg(u8);                                                                             
+                                                                                                   
+   impl Reg {                                                                                      
+       pub fn encoding(self) -> u32 {                                                              
+           u32::from(self.0)                                                                       
+       }                                                                                           
+   } 
+
+pub fn parse_register(input: &str) -> Reg {                                                                                                                                                             
+       let name = input.to_ascii_uppercase();                                                                                                                                                              
+                                                                                                                                                                                                           
+       if name == "XZR" {                                                                                                                                                                                  
+           return Reg(31);                                                                                                                                                                                 
+       }                                                                                                                                                                                                   
+                                                                                                                                                                                                           
+       let digits = name.strip_prefix('X').expect("Expected X register");                                                                                                                                  
+       let number: u8 = digits.parse().expect("Invalid register number");                                                                                                                                  
+       assert!(number <= 30, "Expected X0–X30");                                                                                                                                                           
+                                                                                                                                                                                                           
+       Reg(number)                                                                                                                                                                                         
+   }
+>>>>>>> Stashed changes
 
 fn parse_directive(directive: &str, state: &mut State) -> Option<Vec<u8>> {
     let parts: Vec<&str> = directive.split_whitespace().collect();
@@ -190,6 +216,7 @@ pub fn parse_line(line: &str, state: &mut State) -> Option<Instruction> {
 
     let parts: Vec<&str> = parts.iter().map(|s| s.as_str()).collect();
     let inst = match parts.as_slice() {
+<<<<<<< Updated upstream
         ["MOVK", rd, imm] => {
             let (rd, imm, shift) = parse_mov_wide(rd, imm, None);
             Some(Instruction::MOVK { rd, imm, shift })
@@ -206,29 +233,58 @@ pub fn parse_line(line: &str, state: &mut State) -> Option<Instruction> {
             let (rd, imm, shift) = parse_mov_wide(rd, imm, Some(shift));
             Some(Instruction::MOVZ { rd, imm, shift })
         }
-        ["ORR", dest, src1, src2] => Some(Instruction::ORR {
-            dest: Operand::Reg(parse_register(dest.trim_end_matches(','))),
-            src1: if src1.starts_with('X') {
-                Operand::Reg(parse_register(src1.trim_end_matches(',')))
-            } else {
-                panic!("ORR only supports register movements in this assembler");
-            },
+=======
+        ["MOVK", rd, imm] => Some(Instruction::MOVK {
+            rd: parse_register(rd),
+            imm: Operand::Imm(ImmType::Unsigned16(
+                u16::from_str_radix(imm.strip_prefix("#0x").unwrap().trim_end_matches(','), 16)
+                    .unwrap(),
+            )),
+            shift: Operand::Imm(ImmType::Unsigned16(0)),
+        }),
 
-            src2: if src2.starts_with('X') {
-                Operand::Reg(parse_register(src2.trim_end_matches(',')))
-            } else {
-                panic!("ORR only supports register movements in this assembler");
+        ["MOVK", rd, imm, "LSL", shift] => Some(Instruction::MOVK {
+            rd: parse_register(rd),
+            imm: Operand::Imm(ImmType::Unsigned16(
+                u16::from_str_radix(imm.strip_prefix("#0x").unwrap().trim_end_matches(','), 16)
+                    .unwrap(),
+            )),
+            shift: {
+                let shift_value = shift.strip_prefix('#').unwrap();
+                Operand::Imm(ImmType::Unsigned16(shift_value.parse::<u16>().unwrap()))
             },
         }),
 
-        ["ADD", dest, src1, src2] => Some(Instruction::ADD {
-            dest: Operand::Reg(parse_register(dest.trim_end_matches(','))),
-            src1: if src1.starts_with('X') {
-                Operand::Reg(parse_register(src1.trim_end_matches(',')))
-            } else {
-                let val = src1.trim_start_matches('#').trim_end_matches(',');
-                Operand::Imm(ImmType::Unsigned(val.parse().unwrap()))
+        ["MOVZ", rd, imm] => Some(Instruction::MOVZ {
+            rd: parse_register(rd),
+            imm: Operand::Imm(ImmType::Unsigned16(
+                u16::from_str_radix(imm.strip_prefix("#0x").unwrap().trim_end_matches(','), 16)
+                    .unwrap(),
+            )),
+            shift: Operand::Imm(ImmType::Unsigned16(0)),
+        }),
+
+        ["MOVZ", rd, imm, "LSL", shift] => Some(Instruction::MOVZ {
+            rd: parse_register(rd),
+            imm: Operand::Imm(ImmType::Unsigned16(
+                u16::from_str_radix(imm.strip_prefix("#0x").unwrap().trim_end_matches(','), 16)
+                    .unwrap(),
+            )),
+            shift: {
+                let shift_value = shift.strip_prefix('#').unwrap();
+                Operand::Imm(ImmType::Unsigned16(shift_value.parse::<u16>().unwrap()))
             },
+        }),
+>>>>>>> Stashed changes
+        ["ORR", dest, src1, src2] => Some(Instruction::ORR {
+            dest: parse_register(dest),
+            src1: parse_register(src1),
+            src2: parse_register(src2),
+        }),
+
+        ["ADD", dest, src1, src2] => Some(Instruction::ADD {
+            dest: parse_register(dest),
+            src1: parse_register(src1),
 
             src2: if src2.starts_with('X') {
                 Operand::Reg(parse_register(src2.trim_end_matches(',')))
@@ -239,7 +295,7 @@ pub fn parse_line(line: &str, state: &mut State) -> Option<Instruction> {
         }),
 
         ["LDR", rt, label] => Some(Instruction::LDR {
-            rt: Operand::Reg(parse_register(rt.trim_end_matches(','))),
+            rt: parse_register(rt),
             label: if label.starts_with('=') {
                 let label_inner = label.strip_prefix('=').unwrap();
                 if label_inner.starts_with("0x") {
@@ -261,7 +317,7 @@ pub fn parse_line(line: &str, state: &mut State) -> Option<Instruction> {
         }),
 
         ["STUR", dest, addr] => Some(Instruction::STUR {
-            src: Operand::Reg(parse_register(dest.trim_end_matches(','))),
+            src: parse_register(dest),
             addr: if addr.starts_with('=') {
                 Operand::Imm(ImmType::Address(
                     u64::from_str_radix(addr.trim_start_matches("=0x"), 16).unwrap(),
@@ -305,6 +361,7 @@ pub fn parse_line(line: &str, state: &mut State) -> Option<Instruction> {
     inst
 }
 
+<<<<<<< Updated upstream
 /// Place `width` low bits of `val` at bit position `lo` (inclusive).
 /// Field layouts taken from the A64 encoding diagrams in the Arm A-profile ISA
 /// (DDI 0602), mirrored at https://www.scs.stanford.edu/~zyedidia/arm64/
@@ -318,9 +375,98 @@ fn reg_num(op: &Operand) -> u32 {
     match op {
         Operand::Reg(n) => *n,
         _ => panic!("expected register operand, got {op:?}"),
+=======
+fn encode_movk(rd: &Reg, imm: &Operand, shift: &Operand) -> u32 {
+    let rd_val = rd;
+
+    let imm_val = match imm {
+        Operand::Imm(ImmType::Unsigned16(val)) => *val as u32,
+        _ => panic!("Expected Unsigned16 for imm"),
+    };
+
+    let shift_val = match shift {
+        Operand::Imm(ImmType::Unsigned16(val)) => *val as u32,
+        _ => panic!("Expected Unsigned16 for shift"),
+    };
+
+    let hw = match shift_val {
+        0 => 0b00,
+        16 => 0b01,
+        32 => 0b10,
+        48 => 0b11,
+        _ => panic!("Invalid shift value for MOVK"),
+    };
+
+    let sf = 1;
+
+    (sf << 31) | (0b111100101 << 23) | (hw << 21) | (imm_val << 5) | rd_val.encoding()
+}
+
+fn encode_movz(rd: &Reg, imm: &Operand, shift: &Operand) -> u32 {
+    let rd_val = rd;
+
+    let imm_val = match imm {
+        Operand::Imm(ImmType::Unsigned16(val)) => *val as u32,
+        _ => panic!("Expected Unsigned16 for imm"),
+    };
+
+    let shift_val = match shift {
+        Operand::Imm(ImmType::Unsigned16(val)) => *val as u32,
+        _ => panic!("Expected Unsigned16 for shift"),
+    };
+
+    let hw = match shift_val {
+        0 => 0b00,
+        16 => 0b01,
+        32 => 0b10,
+        48 => 0b11,
+        _ => panic!("Invalid shift value for MOVK"),
+    };
+
+    let sf = 1;
+
+    (sf << 31) | (0b010100101 << 23) | (hw << 21) | (imm_val << 5) | rd_val.encoding()
+}
+
+fn encode_ldur(rt: &Reg) -> u32 {
+
+    // LDR (literal) 64-bit: opc=01, 011000, imm19, Rt
+        let opc = 0b01;
+        (opc << 30) | (0b011000 << 24) | rt.encoding()
+}
+
+fn encode_svc(syscall: &Operand) -> u32 {
+    let syscall = match syscall {
+        Operand::Imm(ImmType::Unsigned16(syscall)) => *syscall,
+        _ => panic!("Expected Unsigned16 for syscall"),
+    };
+
+    (0b11010100000 << 21) | ((syscall as u32) << 5) | 0b1
+}
+
+fn resolve_address(encoding: u32, state: &State) -> u32 {
+    if let Some((symbol, instr_addr)) = state.unresolved_refs.last() {
+        if let Some(&targ_addr) = state.labels.get(symbol) {
+            let pc = instr_addr + 8;
+
+            let offset = (targ_addr as i64) - (pc as i64);
+
+            assert!(
+                (-1048576..=1048575).contains(&offset),
+                "LDR offset out of range"
+            );
+
+            let imm19 = ((offset >> 2) & 0x7FFFF) as u32;
+
+            let resolved_encoding: u32 = (encoding & 0xFF00001F) | (imm19 << 5);
+
+            return resolved_encoding;
+        }
+>>>>>>> Stashed changes
     }
 }
 
+<<<<<<< Updated upstream
 fn imm_u16(op: &Operand) -> u32 {
     match op {
         Operand::Imm(ImmType::Unsigned16(v)) => *v as u32,
@@ -495,6 +641,9 @@ fn resolve_ldr_literal(encoding: u32, instr_addr: usize, targ_addr: u64) -> u32 
 
 fn encode(op: &Instruction, state: &State) -> u32 {
     let pc = state.current_addr;
+=======
+pub fn encode_line(op: &Instruction, _state: &mut State) -> u32 {
+>>>>>>> Stashed changes
     let encoded = match op {
         Instruction::MOVK { rd, imm, shift } => encode_movk(rd, imm, shift),
         Instruction::MOVZ { rd, imm, shift } => encode_movz(rd, imm, shift),

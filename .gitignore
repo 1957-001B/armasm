@@ -1,3 +1,5 @@
 /target
 ./goals.txt
 *.o
+output.bin
+
